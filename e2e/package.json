@@ -1,0 +1,20 @@
+{
+  "name": "@t3tools/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "e2e run",
+    "e2e:ci": "e2e run --workers 4 --reporter list,junit",
+    "install:browser": "e2e-web install chromium --with-deps",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@e2e-dev/web": "0.12.0",
+    "@t3tools/contracts": "workspace:*",
+    "@types/node": "catalog:",
+    "ai": "7.0.127",
+    "e2e": "0.17.0",
+    "effect-codex-app-server": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

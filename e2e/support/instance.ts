@@ -12,7 +12,10 @@ export const SERVER_BIN = NodePath.join(REPO_ROOT, "apps/server/src/bin.ts");
 
 export const WEB_DIST_INDEX = NodePath.join(REPO_ROOT, "apps/web/dist/index.html");
 
-export const FAKE_CODEX_DIR = NodePath.join(REPO_ROOT, "e2e/fixtures/fake-codex");
+/** The scripted provider CLIs; see e2e/fixtures/scenario.ts for what they do with prompts. */
+export const FIXTURES_DIR = NodePath.join(REPO_ROOT, "e2e/fixtures");
+
+export const FAKE_CODEX_DIR = NodePath.join(FIXTURES_DIR, "fake-codex");
 
 export const FIXTURE_PROJECT_NAME = "demo-app";
 

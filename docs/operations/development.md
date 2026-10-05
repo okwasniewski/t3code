@@ -136,9 +136,14 @@ The [e2e](../../e2e) workspace drives the built web client in a real browser wit
 [start-app.ts](../../e2e/scripts/start-app.ts), with a fresh temp T3 home and an allowlisted
 environment from [instance.ts](../../e2e/support/instance.ts): the server and its terminals see
 a throwaway `HOME` and XDG dirs, and none of the developer's tokens or git and gh config.
-Codex is the scripted [fake CLI](../../e2e/fixtures/fake-codex/fake-codex.ts), so turns,
-approvals, Stop, diffs, and commits run without credentials or model calls; every other
-provider is disabled. Nothing touches `~/.t3/userdata`.
+Every provider except Cursor runs as a scripted fake CLI under [e2e/fixtures](../../e2e/fixtures),
+so turns, approvals, Stop, diffs, and commits run without credentials or model calls. The fakes
+share the prompt rules in [scenario.ts](../../e2e/fixtures/scenario.ts) and, where the provider
+publishes one, are typed against its protocol: the generated Codex and ACP schemas, the Claude
+Agent SDK, and the OpenCode SDK. Pi has no typed protocol, so its fake follows the recorded
+transcripts. Cursor's SDK runs inside the server and talks to Cursor's backend directly, so
+there is no process boundary to fake and it stays disabled.
+Nothing touches `~/.t3/userdata`.
 
 ```sh
 vp run test:e2e                            # builds apps/web, then runs the suite
@@ -150,9 +155,10 @@ share one server and run in parallel. Each pairs its own browser through the `t3
 [support/test.ts](../../e2e/support/test.ts), and a test that changes files or commits adds its
 own project with `t3.addProject`, so tests never see each other's threads or edits.
 
-The fake is typed against the generated Codex protocol in `packages/effect-codex-app-server`
-and answers unknown requests with "method not found", so a protocol bump that breaks it fails
-typecheck or a test rather than drifting. Its header documents the prompts it understands.
+[tests/providers](../../e2e/tests/providers) runs the same reply, approval, and Stop flows
+through every faked provider, one file each so they run in parallel. The Codex, ACP, and OpenCode fakes reject requests they do not
+serve, so a newly required call fails a test. The Claude and Pi fakes acknowledge unknown
+control requests, as the real CLIs do for optional ones.
 
 [journeys.e2e.ts](../../e2e/tests/journeys.e2e.ts) drives whole user journeys with
 `agent.act`, one goal per call, each pinned by an exact check. These tests are tagged `agent`,

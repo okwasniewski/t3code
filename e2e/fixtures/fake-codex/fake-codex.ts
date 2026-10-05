@@ -3,12 +3,7 @@
  * Deterministic stand-in for the Codex CLI, so e2e runs exercise real provider turns
  * without credentials or model calls. Every frame is typed against the generated
  * app-server protocol, so a protocol change fails `tsc` here instead of drifting.
- *
- * A turn's behaviour comes from its prompt:
- * - `write <file>` runs a shell command item that writes the file in the workspace,
- *   asking for approval first unless the turn's approval policy is `never`.
- * - `wait` keeps the turn running until it is interrupted.
- * - anything else streams the reply `Fake Codex received: <prompt>`.
+ * Prompts follow the shared rules in ../scenario.ts.
  *
  * Requests it does not serve get JSON-RPC "method not found", so a newly required
  * method surfaces as a provider error instead of an empty success.
@@ -18,6 +13,17 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeReadline from "node:readline";
+
+import {
+  WAITING_TEXT,
+  type JsonSchema,
+  flagValue,
+  replyText,
+  scenarioFor,
+  textGenerationOutput,
+  writeCommand,
+  writeScenarioFile,
+} from "../scenario.ts";
 
 import type {
   ClientRequestParamsByMethod,
@@ -52,52 +58,17 @@ if (command === "--version") {
 
 /**
  * Answers `codex exec`, which the server uses for thread titles and commit messages, by
- * writing a value matching `--output-schema` to `--output-last-message`. Text fields echo
- * the first line of the prompt's user message, so a thread is titled by its first message.
+ * writing a value matching `--output-schema` to `--output-last-message`.
  */
 function runExec(args: ReadonlyArray<string>) {
-  const flag = (name: string) => {
-    const value = args[args.indexOf(name) + 1];
-    if (!args.includes(name) || value === undefined) {
-      throw new Error(`fake codex exec: missing ${name}`);
-    }
-    return value;
-  };
-  const schema: JsonSchema = JSON.parse(NodeFS.readFileSync(flag("--output-schema"), "utf8"));
-  const prompt = NodeFS.readFileSync(0, "utf8");
-  const userMessage = /User message:\n(.+)/.exec(prompt)?.[1]?.trim();
-  NodeFS.writeFileSync(
-    flag("--output-last-message"),
-    JSON.stringify(textGenerationOutput(schema, userMessage ?? "Fake Codex title")),
-  );
-}
-
-interface JsonSchema {
-  readonly type?: string;
-  readonly enum?: ReadonlyArray<string>;
-  readonly properties?: Readonly<Record<string, JsonSchema>>;
-}
-
-/** Fills the title and commit-message output schemas: text fields get `text`, the rest a zero value. */
-function textGenerationOutput(schema: JsonSchema, text: string): unknown {
-  switch (schema.type) {
-    case "object":
-      return Object.fromEntries(
-        Object.entries(schema.properties ?? {}).map(([key, value]) => [
-          key,
-          textGenerationOutput(value, text),
-        ]),
-      );
-    case "array":
-      return [];
-    case "boolean":
-      return false;
-    case "number":
-    case "integer":
-      return 0;
-    default:
-      return schema.enum?.[0] ?? text;
+  const schemaPath = flagValue(args, "--output-schema");
+  const outputPath = flagValue(args, "--output-last-message");
+  if (schemaPath === undefined || outputPath === undefined) {
+    throw new Error("fake codex exec: missing --output-schema or --output-last-message");
   }
+  const schema: JsonSchema = JSON.parse(NodeFS.readFileSync(schemaPath, "utf8"));
+  const prompt = NodeFS.readFileSync(0, "utf8");
+  NodeFS.writeFileSync(outputPath, JSON.stringify(textGenerationOutput(schema, prompt)));
 }
 
 interface Turn {
@@ -247,8 +218,6 @@ function runAppServer() {
     notify("turn/completed", { threadId: turn.threadId, turn: turnSnapshot(turn, status, items) });
   };
 
-  const shellCommand = (fileName: string) => `printf 'Written by fake Codex\\n' > ${fileName}`;
-
   const commandItem = (
     turn: Turn,
     fileName: string,
@@ -258,19 +227,19 @@ function runAppServer() {
     id: turn.commandItemId,
     pluginId: null,
     scriptPath: null,
-    command: `/bin/sh -c "${shellCommand(fileName)}"`,
+    command: `/bin/sh -c "${writeCommand(fileName)}"`,
     cwd: turn.cwd,
     processId: null,
     source: "agent",
     status,
-    commandActions: [{ type: "unknown", command: shellCommand(fileName) }],
+    commandActions: [{ type: "unknown", command: writeCommand(fileName) }],
     aggregatedOutput: status === "completed" ? "" : null,
     exitCode: status === "completed" ? 0 : null,
     durationMs: status === "inProgress" ? null : 1,
   });
 
   const runWrite = (turn: Turn, fileName: string) => {
-    NodeFS.writeFileSync(NodePath.join(turn.cwd, fileName), "Written by fake Codex\n");
+    writeScenarioFile(turn.cwd, fileName);
     itemCompleted(turn, commandItem(turn, fileName, "completed"));
     completeTurn(turn, "completed", [agentMessage(turn, `Wrote ${fileName}.`)]);
   };
@@ -307,13 +276,16 @@ function runAppServer() {
       itemStarted(turn, userItem);
       itemCompleted(turn, userItem);
 
-      if (/\bwait\b/i.test(prompt)) return;
-
-      const fileName = /\bwrite\s+([\w.-]+)/i.exec(prompt)?.[1];
-      if (fileName === undefined) {
-        completeTurn(turn, "completed", [agentMessage(turn, `Fake Codex received: ${prompt}`)]);
+      const scenario = scenarioFor(prompt);
+      if (scenario.kind === "wait") {
+        agentMessage(turn, WAITING_TEXT);
         return;
       }
+      if (scenario.kind === "reply") {
+        completeTurn(turn, "completed", [agentMessage(turn, replyText("Codex", prompt))]);
+        return;
+      }
+      const { fileName } = scenario;
       itemStarted(turn, commandItem(turn, fileName, "inProgress"));
       if (params.approvalPolicy === "never") {
         runWrite(turn, fileName);
@@ -331,7 +303,7 @@ function runAppServer() {
         reason: `May I write ${fileName}?`,
         command: pending.type === "commandExecution" ? pending.command : null,
         cwd: turn.cwd,
-        commandActions: [{ type: "unknown", command: shellCommand(fileName) }],
+        commandActions: [{ type: "unknown", command: writeCommand(fileName) }],
       });
       pendingApprovals.set(approvalId, { turn, fileName });
     });

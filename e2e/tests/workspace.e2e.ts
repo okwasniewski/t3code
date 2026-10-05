@@ -5,6 +5,7 @@ import * as NodePath from "node:path";
 
 import { expect } from "e2e";
 
+import { WRITTEN_CONTENT } from "../fixtures/scenario.ts";
 import { describe, test } from "../support/test.ts";
 
 const git = (cwd: string, ...args: Array<string>) =>
@@ -24,7 +25,7 @@ describe("workspace changes", { tags: ["workspace"] }, () => {
 
     await expect(screen.getByText("Wrote notes.md.")).toBeVisible();
     expect(NodeFS.readFileSync(NodePath.join(project.root, "notes.md"), "utf8")).toBe(
-      "Written by fake Codex\n",
+      WRITTEN_CONTENT,
     );
     await expect(screen.getByText("1 changed file")).toBeVisible();
     await t3.waitForIdle();

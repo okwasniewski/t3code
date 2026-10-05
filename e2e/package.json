@@ -9,11 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.276",
     "@e2e-dev/web": "0.12.0",
+    "@opencode-ai/sdk": "1.15.13",
     "@t3tools/contracts": "workspace:*",
     "@types/node": "catalog:",
     "ai": "7.0.127",
     "e2e": "0.17.0",
+    "effect-acp": "workspace:*",
     "effect-codex-app-server": "workspace:*",
     "typescript": "catalog:"
   }

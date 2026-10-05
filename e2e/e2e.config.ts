@@ -7,7 +7,7 @@ import { FIXTURE_PROJECT_NAME } from "./support/instance.ts";
 const context =
   "T3 Code is a GUI for coding agents. A project is a local folder, a thread is one conversation with an agent inside a project. " +
   `This is an isolated test server with one project, "${FIXTURE_PROJECT_NAME}" (a small git repository), and its bootstrap thread "New thread". ` +
-  "Codex is a scripted fake and every other provider is disabled. A message containing `write <file>` runs a shell command that writes that file, asking for approval first in Supervised mode; a message containing `wait` keeps the turn running until Stop; any other message gets the reply `Fake Codex received: <message>`. " +
+  "Every provider (Codex, Claude, Grok, OpenCode, Pi, Antigravity) is a scripted fake; Cursor is disabled. A message containing `write <file>` runs a shell command that writes that file, asking for approval first in Supervised mode; a message containing `wait` keeps the turn running until Stop; any other message gets the reply `Fake <Provider> received: <message>`. Antigravity needs Sign in under Settings > Providers before it lists models. " +
   "Some controls act on the host machine, never use them: Update or install a provider, Open in an editor, Publish repository or push, sign in to a provider, connect T3 Connect, pair another device, open external links. " +
   "Not bugs: a link that opens a new tab leaves this one unchanged; accessible text splits around inline links, so judge copy by the rendered screen.";
 

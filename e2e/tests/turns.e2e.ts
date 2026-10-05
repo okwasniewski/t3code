@@ -1,5 +1,6 @@
 import { expect } from "e2e";
 
+import { WAITING_TEXT } from "../fixtures/scenario.ts";
 import { describe, test } from "../support/test.ts";
 
 describe("agent turns", { tags: ["turns"] }, () => {
@@ -24,6 +25,7 @@ describe("agent turns", { tags: ["turns"] }, () => {
   test("Stop interrupts a running turn", async ({ t3, screen }) => {
     await t3.startDraft();
     await t3.send("wait until I stop you");
+    await expect(screen.getByText(WAITING_TEXT)).toBeVisible();
     await screen.getByRole("button", "Stop generation").tap();
     await expect(screen.getByText("Run interrupted")).toBeVisible();
     await t3.waitForIdle();

@@ -100,6 +100,42 @@ export function createT3(app: App, browser: Browser, screen: Screen) {
       await t3.waitForIdle();
     },
 
+    /**
+     * Selects `provider`'s first model in the composer's model picker, opened with its
+     * `mod+shift+m` keybinding since the trigger is labelled by whichever model is current.
+     */
+    async chooseModel(provider: string) {
+      const providers = screen.getByRole("toolbar", "Providers");
+      // A keypress right after a draft mounts can land before the keybinding is registered,
+      // so press until the picker shows; checking first keeps the toggle from closing it.
+      await expect
+        .poll(
+          async () => {
+            if ((await providers.count()) > 0) return true;
+            await t3.pressShortcut("Shift+m");
+            return false;
+          },
+          { interval: 500 },
+        )
+        .toBe(true);
+      const picker = screen.getByRole("dialog");
+      await providers.getByRole("button", new RegExp(`^${escapeRegExp(provider)}\\b`)).tap();
+      await picker.getByRole("option").first().tap();
+      await expect(picker).not.toBeVisible();
+    },
+
+    /**
+     * Signs a provider in from Settings → Providers when it offers "Sign in", as
+     * Antigravity does before its first session. A no-op once it is authenticated.
+     */
+    async signInProvider(provider: string) {
+      await app.open("/settings/providers");
+      await screen.getByRole("button", `Select ${provider}`).tap();
+      const signIn = screen.getByRole("button", "Sign in");
+      if ((await signIn.count()) > 0) await signIn.tap();
+      await expect(screen.getByText(/^Authenticated/).first()).toBeVisible();
+    },
+
     /** Picks a runtime mode, such as `/^Supervised/`, from the composer. */
     async chooseRuntimeMode(mode: RegExp) {
       await screen.getByRole("combobox", "Runtime mode").tap();

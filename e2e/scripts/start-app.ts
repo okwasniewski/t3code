@@ -18,6 +18,7 @@ import type { ServerSettings, ServerSettingsPatch } from "@t3tools/contracts/set
 
 import {
   FAKE_CODEX_DIR,
+  FIXTURES_DIR,
   FIXTURE_PROJECT_NAME,
   INSTANCES_ROOT,
   SERVER_BIN,
@@ -76,21 +77,28 @@ server.on("exit", (code) => {
   process.exit(code ?? 0);
 });
 
-/** Points Codex at the fake CLI and turns every other provider off, so every turn is scripted. */
+/**
+ * Points each provider at its scripted fake CLI, so every turn is deterministic, and
+ * turns off provider update checks, which would reach npm.
+ */
 function writeServerSettings({ t3Home }: InstancePaths) {
   const disabled = { enabled: false };
+  const fake = (relativePath: string) => ({
+    enabled: true,
+    binaryPath: NodePath.join(FIXTURES_DIR, relativePath),
+  });
   // Keyed by every provider the contract knows, so a new provider fails typecheck here
   // instead of starting enabled and probing a real CLI.
   const providers: Record<keyof ServerSettings["providers"], object> = {
     codex: { binaryPath: NodePath.join(FAKE_CODEX_DIR, "codex") },
-    claudeAgent: disabled,
+    claudeAgent: fake("fake-claude/claude"),
     cursor: disabled,
-    grok: disabled,
-    pi: disabled,
-    opencode: disabled,
-    antigravity: disabled,
+    grok: fake("fake-acp/grok"),
+    pi: fake("fake-pi/pi"),
+    opencode: fake("fake-opencode/opencode"),
+    antigravity: fake("fake-acp/antigravity"),
   };
-  const settings = { providers } satisfies ServerSettingsPatch;
+  const settings = { enableProviderUpdateChecks: false, providers } satisfies ServerSettingsPatch;
   NodeFS.mkdirSync(NodePath.join(t3Home, "userdata"), { recursive: true });
   NodeFS.writeFileSync(
     NodePath.join(t3Home, "userdata", "settings.json"),

@@ -18,12 +18,12 @@
     },
     "e2e": {
       // The e2e runner loads its config and test files and spawns the launcher; the
-      // server spawns the fake Codex CLI.
+      // server spawns the fake provider CLIs.
       "entry": [
         "e2e.config.ts",
         "scripts/start-app.ts",
         "tests/**/*.e2e.ts",
-        "fixtures/fake-codex/fake-codex.ts",
+        "fixtures/fake-*/fake-*.ts",
       ],
     },
     "scripts": {
